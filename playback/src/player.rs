@@ -54,6 +54,7 @@ pub enum PlayerEvent {
     Changed {
         old_track_id: SpotifyId,
         new_track_id: SpotifyId,
+        new_track_name: String,
     },
 
     Stopped {
@@ -403,8 +404,15 @@ impl PlayerInternal {
                 }
 
                 match self.load_track(track_id, position as i64) {
-                    Some((decoder, normalisation_factor)) => {
+                    Some((decoder, normalisation_factor, track)) => {
+                        
                         if play {
+
+                            info!(
+                                "Pause state \"{}\" with Spotify URI \"spotify:track:{}\"",
+                                track.name,
+                                track_id.to_base62()
+                            );
                             match self.state {
                                 PlayerState::Playing {
                                     track_id: old_track_id,
@@ -416,6 +424,7 @@ impl PlayerInternal {
                                 } => self.send_event(PlayerEvent::Changed {
                                     old_track_id: old_track_id,
                                     new_track_id: track_id,
+                                    new_track_name: track.name,
                                 }),
                                 _ => self.send_event(PlayerEvent::Started { track_id }),
                             }
@@ -429,6 +438,12 @@ impl PlayerInternal {
                                 normalisation_factor: normalisation_factor,
                             };
                         } else {
+                            info!(
+                                "Pause state \"{}\" with Spotify URI \"spotify:track:{}\"",
+                                track.name,
+                                track_id.to_base62()
+                            );
+                        
                             self.state = PlayerState::Paused {
                                 track_id: track_id,
                                 decoder: decoder,
@@ -446,6 +461,7 @@ impl PlayerInternal {
                                 } => self.send_event(PlayerEvent::Changed {
                                     old_track_id: old_track_id,
                                     new_track_id: track_id,
+                                    new_track_name: track.name,
                                 }),
                                 _ => (),
                             }
@@ -526,7 +542,7 @@ impl PlayerInternal {
         }
     }
 
-    fn load_track(&self, track_id: SpotifyId, position: i64) -> Option<(Decoder, f32)> {
+    fn load_track(&self, track_id: SpotifyId, position: i64) -> Option<(Decoder, f32, Track)> {
         let track = Track::get(&self.session, track_id).wait().unwrap();
 
         info!(
@@ -586,7 +602,7 @@ impl PlayerInternal {
 
         info!("Track \"{}\" loaded", track.name);
 
-        Some((decoder, normalisation_factor))
+        Some((decoder, normalisation_factor, track.into_owned()))
     }
 }
 

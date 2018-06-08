@@ -18,10 +18,12 @@ pub fn run_program_on_events(event: PlayerEvent, onevent: &str) {
         PlayerEvent::Changed {
             old_track_id,
             new_track_id,
+            new_track_name,
         } => {
             env_vars.insert("PLAYER_EVENT", "change".to_string());
             env_vars.insert("OLD_TRACK_ID", old_track_id.to_base16());
             env_vars.insert("TRACK_ID", new_track_id.to_base16());
+            env_vars.insert("TRACK_NAME", new_track_name);
         }
         PlayerEvent::Started { track_id } => {
             env_vars.insert("PLAYER_EVENT", "start".to_string());
