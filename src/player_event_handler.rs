@@ -25,13 +25,15 @@ pub fn run_program_on_events(event: PlayerEvent, onevent: &str) {
             env_vars.insert("TRACK_ID", new_track_id.to_base16());
             env_vars.insert("TRACK_NAME", new_track_name);
         }
-        PlayerEvent::Started { track_id } => {
+        PlayerEvent::Started { track_id, track_name } => {
             env_vars.insert("PLAYER_EVENT", "start".to_string());
             env_vars.insert("TRACK_ID", track_id.to_base16());
+            env_vars.insert("TRACK_NAME", track_name);
         }
-        PlayerEvent::Stopped { track_id } => {
+        PlayerEvent::Stopped { track_id, track_name } => {
             env_vars.insert("PLAYER_EVENT", "stop".to_string());
             env_vars.insert("TRACK_ID", track_id.to_base16());
+            env_vars.insert("TRACK_NAME", track_name);
         }
     }
     run_program(onevent, env_vars);

@@ -49,6 +49,7 @@ enum PlayerCommand {
 pub enum PlayerEvent {
     Started {
         track_id: SpotifyId,
+        track_name: String,
     },
 
     Changed {
@@ -59,6 +60,7 @@ pub enum PlayerEvent {
 
     Stopped {
         track_id: SpotifyId,
+        track_name: String,
     },
 }
 
@@ -200,12 +202,14 @@ enum PlayerState {
     Stopped,
     Paused {
         track_id: SpotifyId,
+        track: Track,
         decoder: Decoder,
         end_of_track: oneshot::Sender<()>,
         normalisation_factor: f32,
     },
     Playing {
         track_id: SpotifyId,
+        track: Track,
         decoder: Decoder,
         end_of_track: oneshot::Sender<()>,
         normalisation_factor: f32,
@@ -235,6 +239,15 @@ impl PlayerState {
         }
     }
 
+    fn track(&mut self) -> Option<&mut Track> {
+        use self::PlayerState::*;
+        match *self {
+            Stopped | EndOfTrack { .. } => None,
+            Paused { ref mut track, .. } | Playing { ref mut track, .. } => Some(track),
+            Invalid => panic!("invalid state"),
+        }
+    }
+
     fn playing_to_end_of_track(&mut self) {
         use self::PlayerState::*;
         match mem::replace(self, Invalid) {
@@ -255,12 +268,14 @@ impl PlayerState {
         match ::std::mem::replace(self, Invalid) {
             Paused {
                 track_id,
+                track,
                 decoder,
                 end_of_track,
                 normalisation_factor,
             } => {
                 *self = Playing {
                     track_id: track_id,
+                    track,
                     decoder: decoder,
                     end_of_track: end_of_track,
                     normalisation_factor: normalisation_factor,
@@ -275,12 +290,14 @@ impl PlayerState {
         match ::std::mem::replace(self, Invalid) {
             Playing {
                 track_id,
+                track,
                 decoder,
                 end_of_track,
                 normalisation_factor,
             } => {
                 *self = Paused {
                     track_id: track_id,
+                    track,
                     decoder: decoder,
                     end_of_track: end_of_track,
                     normalisation_factor: normalisation_factor,
@@ -404,13 +421,13 @@ impl PlayerInternal {
                 }
 
                 match self.load_track(track_id, position as i64) {
-                    Some((decoder, normalisation_factor, track)) => {
+                    Some((decoder, normalisation_factor, current_track)) => {
                         
                         if play {
 
                             info!(
                                 "Pause state \"{}\" with Spotify URI \"spotify:track:{}\"",
-                                track.name,
+                                current_track.name,
                                 track_id.to_base62()
                             );
                             match self.state {
@@ -424,15 +441,16 @@ impl PlayerInternal {
                                 } => self.send_event(PlayerEvent::Changed {
                                     old_track_id: old_track_id,
                                     new_track_id: track_id,
-                                    new_track_name: track.name,
+                                    new_track_name: current_track.clone().name,
                                 }),
-                                _ => self.send_event(PlayerEvent::Started { track_id }),
+                                _ => self.send_event(PlayerEvent::Started { track_id: track_id, track_name: current_track.clone().name }),
                             }
 
                             self.start_sink();
 
                             self.state = PlayerState::Playing {
                                 track_id: track_id,
+                                track: current_track,
                                 decoder: decoder,
                                 end_of_track: end_of_track,
                                 normalisation_factor: normalisation_factor,
@@ -440,12 +458,13 @@ impl PlayerInternal {
                         } else {
                             info!(
                                 "Pause state \"{}\" with Spotify URI \"spotify:track:{}\"",
-                                track.name,
+                                current_track.name,
                                 track_id.to_base62()
                             );
                         
                             self.state = PlayerState::Paused {
                                 track_id: track_id,
+                                track: current_track.clone(),
                                 decoder: decoder,
                                 end_of_track: end_of_track,
                                 normalisation_factor: normalisation_factor,
@@ -461,11 +480,11 @@ impl PlayerInternal {
                                 } => self.send_event(PlayerEvent::Changed {
                                     old_track_id: old_track_id,
                                     new_track_id: track_id,
-                                    new_track_name: track.name,
+                                    new_track_name: current_track.clone().name,
                                 }),
                                 _ => (),
                             }
-                            self.send_event(PlayerEvent::Stopped { track_id });
+                            self.send_event(PlayerEvent::Stopped { track_id: track_id, track_name: current_track.clone().name });
                         }
                     }
 
@@ -490,7 +509,14 @@ impl PlayerInternal {
                 if let PlayerState::Paused { track_id, .. } = self.state {
                     self.state.paused_to_playing();
 
-                    self.send_event(PlayerEvent::Started { track_id });
+                    let t = match self.state.track() {
+                        Some(track) => { track.clone().name },
+                        None => { "".to_string() }
+                    };
+
+                    self.send_event(PlayerEvent::Started { track_id: track_id, track_name: t });
+
+                    
                     self.start_sink();
                 } else {
                     warn!("Player::play called from invalid state");
@@ -502,7 +528,13 @@ impl PlayerInternal {
                     self.state.playing_to_paused();
 
                     self.stop_sink_if_running();
-                    self.send_event(PlayerEvent::Stopped { track_id });
+
+                    let t = match self.state.track() {
+                        Some(track) => { track.clone().name },
+                        None => { "".to_string() }
+                    };
+                    self.send_event(PlayerEvent::Stopped { track_id: track_id, track_name: t });
+    
                 } else {
                     warn!("Player::pause called from invalid state");
                 }
@@ -513,7 +545,13 @@ impl PlayerInternal {
                 | PlayerState::Paused { track_id, .. }
                 | PlayerState::EndOfTrack { track_id } => {
                     self.stop_sink_if_running();
-                    self.send_event(PlayerEvent::Stopped { track_id });
+
+                    let t = match self.state.track() {
+                        Some(track) => { track.clone().name },
+                        None => { "".to_string() }
+                    };
+                    self.send_event(PlayerEvent::Stopped { track_id: track_id, track_name: t });
+                    
                     self.state = PlayerState::Stopped;
                 }
                 PlayerState::Stopped => {

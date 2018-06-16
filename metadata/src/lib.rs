@@ -72,6 +72,10 @@ pub trait Metadata: Send + Sized + 'static {
     }
 }
 
+// pub trait Show {
+//     fn show(&self) -> String;
+// }
+
 #[derive(Debug, Clone)]
 pub struct Track {
     pub id: SpotifyId,
@@ -99,6 +103,14 @@ pub struct Artist {
     pub name: String,
     pub top_tracks: Vec<SpotifyId>,
 }
+// impl Show for Track {
+//     fn show(&self) -> String {
+//         let mut owned_string: String = "".to_string();
+//         let artist_name: &str = (&self.artists.first() as Artist).name;
+//         let track_name: &str = &self.name;
+//         "coucou".to_string()
+//     }
+// }
 
 impl Metadata for Track {
     type Message = protocol::metadata::Track;
