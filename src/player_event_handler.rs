@@ -18,22 +18,34 @@ pub fn run_program_on_events(event: PlayerEvent, onevent: &str) {
         PlayerEvent::Changed {
             old_track_id,
             new_track_id,
-            new_track_name,
+            track_info,
         } => {
             env_vars.insert("PLAYER_EVENT", "change".to_string());
             env_vars.insert("OLD_TRACK_ID", old_track_id.to_base16());
             env_vars.insert("TRACK_ID", new_track_id.to_base16());
-            env_vars.insert("TRACK_NAME", new_track_name);
+            env_vars.insert("TRACK_NAME", track_info.track.name);
+
+            let artists_string: String = track_info.artists.into_iter().map(|x| { x.name }).collect::<Vec<String>>().join(" / ");
+            env_vars.insert("TRACK_ARTISTS", artists_string);
+            env_vars.insert("TRACK_ALBUM", track_info.album.name);
         }
-        PlayerEvent::Started { track_id, track_name } => {
+        PlayerEvent::Started { track_id, track_info } => {
             env_vars.insert("PLAYER_EVENT", "start".to_string());
             env_vars.insert("TRACK_ID", track_id.to_base16());
-            env_vars.insert("TRACK_NAME", track_name);
+            env_vars.insert("TRACK_NAME", track_info.track.name);
+
+            let artists_string: String = track_info.artists.into_iter().map(|x| { x.name }).collect::<Vec<String>>().join(" / ");
+            env_vars.insert("TRACK_ARTISTS", artists_string);
+            env_vars.insert("TRACK_ALBUM", track_info.album.name);
         }
-        PlayerEvent::Stopped { track_id, track_name } => {
+        PlayerEvent::Stopped { track_id, track_info } => {
             env_vars.insert("PLAYER_EVENT", "stop".to_string());
             env_vars.insert("TRACK_ID", track_id.to_base16());
-            env_vars.insert("TRACK_NAME", track_name);
+            env_vars.insert("TRACK_NAME", track_info.track.name);
+
+            let artists_string: String = track_info.artists.into_iter().map(|x| { x.name }).collect::<Vec<String>>().join(" / ");
+            env_vars.insert("TRACK_ARTISTS", artists_string);
+            env_vars.insert("TRACK_ALBUM", track_info.album.name);
         }
     }
     run_program(onevent, env_vars);
