@@ -653,7 +653,8 @@ impl PlayerInternal {
             }
         };
 
-        let key = self.session
+        let key = self
+            .session
             .audio_key()
             .request(track.id, file_id)
             .wait()
@@ -700,7 +701,8 @@ impl Drop for PlayerInternal {
 impl ::std::fmt::Debug for PlayerCommand {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         match *self {
-            PlayerCommand::Load(track, play, position, _) => f.debug_tuple("Load")
+            PlayerCommand::Load(track, play, position, _) => f
+                .debug_tuple("Load")
                 .field(&track)
                 .field(&play)
                 .field(&position)
